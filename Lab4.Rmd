@@ -13,12 +13,13 @@ library(ggplot2)
 library(psych)
 library(bruceR)
 
+
 ```
 
 # Load dataset
 ```{r}
 
-lab4data <- read.csv("C:/Users/Colin/Documents/GitHub/Website/Lab4/skewed.csv")
+lab4data <- read.csv("/Users/northlight/Documents/GitHub/Lab4/skewed.csv")
 
 
 ```
@@ -52,10 +53,19 @@ plot(density(lab4data$Performance, na.rm = TRUE, bw = 90),  lwd=2, main = "")
 ```{r}
 
 #a fun function to plot the violin plot by group, but it's not part of ggplot
-#violinBy(Performance ~ Group, data = lab4data, rain= TRUE, vertical = FALSE)
+violinBy(Performance ~ Group, data = lab4data, rain= TRUE, vertical = FALSE)
 
 
 #Find a way to plot the histograms, density, and qq plots by groups using ggplot
+
+ggplot(lab4data, aes(x = Performance)) + geom_histogram(binwidth = 20) + facet_wrap(~Group) + theme_classic()
+
+ggplot(lab4data, aes(x = Performance)) + geom_density(adjust = 2)  + facet_wrap(~Group) + theme_classic()
+
+qq<-ggplot(lab4data, aes(sample = Performance)) + geom_qq()  + facet_wrap(~Group) + theme_classic()
+
+qq+ geom_qq_line()
+
 
 
 #Use ggplot to create a violin plot by groups
@@ -80,11 +90,14 @@ shapiro.test(lab4data$Performance)
 
 #Use the describeBy() function to get skewness and kurtosis by group
 
+?describeBy()
+
+describeBy(Performance ~ Group, data = lab4data)
 
 #Use the group by function to get shapiro test results by group
 lab4data %>%
   group_by(Group) %>%
-  summarize(W = shapiro.test(Performance)$statistic)
+  summarize(W = shapiro.test(Performance)$statistic, p_value = shapiro.test(Performance)$p.value)
 
 #Use the filter function to get both
 
@@ -93,7 +106,7 @@ lab4data %>%
 
 
 ```
-# Q1: What is your overall conclusion about this variable's normality? Why?
+# Q1: What is your overall conclusion about this variable's normality? Why? In the case of the Performance variable, I would argue that the distribution is not normal because even though the p-value for the shapiro test for the Perfomance variable was greater than 0.05 and therefore normal, the visual data appeared to be skewed (i.e.side to side distribution); kurtosis, or up and down distribution, i think was okay. 
 
 
 
@@ -101,11 +114,13 @@ lab4data %>%
 ## Descrptive Variance
 ```{r}
 
+lab4data_clean<-drop_na(lab4data)
+
 var(lab4data$Performance)
 
-#lab4data %>%
-  #group_by(Group) %>%
-  #summarize(...)
+lab4data_clean %>%
+  group_by(Group) %>%
+  summarize(variance = var (Performance))
 
 
 ```
@@ -114,11 +129,11 @@ var(lab4data$Performance)
 ```{r}
 
 
-leveneTest(Performance~Group, lab4data)
+leveneTest(Performance~Group, lab4data_clean) 
 
 MANOVA(lab4data, dv = "Performance", between = "Group")
 
-#What if you want to test equal variance between 2 groups specifically? 
+#What if you want to test equal variance between only 2 groups specifically? create another dataset using only filter function
 
 lab4dataConG1<-lab4data %>%
   filter(Group == "Control" | Group == "G1")
@@ -128,7 +143,7 @@ leveneTest(Performance~Group, lab4dataConG1)
 
 ```
 
-# Q2: Overall, does it meet the equal variance assumption across the groups? Why?
+# Q2: Overall, does it meet the equal variance assumption across the groups? Why? No, it does not meet our assumuption of equal variances, because the difference between control and other conditions is more than 2x in some cases, and our observed p-value is less than .05 (i.e. the violation was significant).
 
 # Transformation
 ```{r}
@@ -141,4 +156,57 @@ lab4data$Performance_log <- log10(lab4data$Performance)
 
 ```
 
-# Q3: Run the above tests again with the transformed outcome. Compare the differences in results. 
+```{r}
+
+# Q3: Run the above tests again with the transformed outcome. Compare the differences in results. Before we made the transformation of the data, we were violating our assumption of normality of distribution (i.e. it was skewed). After we log transformed the data (and adjusted some of the width values of the plots to be more visually appealing) we found that the data appeared to be more normally distributed. 
+
+
+ggplot(lab4data, aes(x = Performance_log)) + geom_histogram(binwidth = 0.25) + theme_classic()
+
+ggplot(lab4data, aes(x = Performance_log)) + geom_density(adjust = 2)  + theme_classic()
+
+qq<-ggplot(lab4data, aes(sample = Performance_log)) + geom_qq()  + theme_classic()
+
+qq+ geom_qq_line()
+
+ggplot(lab4data, aes(x = Performance_log)) + geom_histogram(binwidth = 0.25) + facet_wrap(~Group) + theme_classic()
+
+ggplot(lab4data, aes(x = Performance_log)) + geom_density(adjust = 5)  + facet_wrap(~Group) + theme_classic()
+
+qq<-ggplot(lab4data, aes(sample = Performance_log)) + geom_qq()  + facet_wrap(~Group) + theme_classic()
+
+qq+ geom_qq_line()
+
+
+describe(lab4data$Performance_log)
+
+shapiro.test(lab4data$Performance_log)
+
+
+?describeBy()
+
+describeBy(Performance_log ~ Group, data = lab4data)
+
+lab4data %>%
+  group_by(Group) %>%
+  summarize(W = shapiro.test(Performance_log)$statistic, p_value = shapiro.test(Performance_log)$p.value)
+
+lab4data_clean<-drop_na(lab4data)
+
+var(lab4data$Performance_log)
+
+lab4data_clean %>%
+  group_by(Group) %>%
+  summarize(variance = var (Performance_log))
+
+leveneTest(Performance_log~Group, lab4data_clean) 
+
+MANOVA(lab4data, dv = "Performance_log", between = "Group")
+
+
+lab4dataConG1<-lab4data %>%
+  filter(Group == "Control" | Group == "G1")
+
+leveneTest(Performance_log~Group, lab4dataConG1)
+
+```
